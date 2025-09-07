@@ -24,7 +24,12 @@ jobs:
       - name: Find READY folder
         id: folder
         run: |
-          READY_FILE=$(jq -r '.head_commit.added[] | select(endswith("_READY.txt"))' $GITHUB_EVENT_PATH)
+          # Look for any READY file in the repo
+          READY_FILE=$(find . -name "*_READY.txt" | head -n1)
+          if [ -z "$READY_FILE" ]; then
+            echo "No READY file found, exiting."
+            exit 0
+          fi
           CHUNK_DIR=$(dirname "$READY_FILE")
           echo "CHUNK_DIR=$CHUNK_DIR" >> $GITHUB_ENV
           echo "Found READY folder: $CHUNK_DIR"
