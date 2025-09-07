@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'chunks/**'
+      - 'chunks/_READY.txt'
 
 jobs:
   stitch:
@@ -31,5 +31,6 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add combo/
           git rm -f chunks/*.png || true
+          git rm -f chunks/_READY.txt || true
           git commit -m "Stitched combo from chunks [skip ci]" || echo "No changes"
           git push
