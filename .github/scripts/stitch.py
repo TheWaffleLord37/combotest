@@ -2,6 +2,7 @@ from PIL import Image
 import os
 from datetime import datetime
 import string
+import re
 import math
 
 chunk_dir = "chunks"
@@ -18,50 +19,81 @@ for c1 in reversed(letters):
         for c3 in reversed(letters):
             for c4 in reversed(letters):
                 for c5 in reversed(letters):
-                    prefixes.append(c1+c2+c3+c4+c5)
+                    prefixes.append(c1 + c2 + c3 + c4 + c5)
 
-# ----------------------------
 # Determine next available prefix
-# ----------------------------
 existing_files = [f for f in os.listdir(output_dir) if f.endswith(".png")]
 used_prefixes = [f.split("_")[0].replace("combo-", "") for f in existing_files]
 next_prefix = next((p for p in prefixes if p not in used_prefixes), "zzzzz")
 
 # ----------------------------
-# Gather chunks
+# Gather and sort chunks numerically
 # ----------------------------
-chunks = sorted([f for f in os.listdir(chunk_dir) if f.endswith(".png")],
-                key=lambda x: int(x.split("_")[1].split(".")[0]))  # sort numerically
+chunks = [f for f in os.listdir(chunk_dir) if re.match(r"chunk_\d+\.png", f)]
 if not chunks:
     raise SystemExit("❌ No chunks found")
 
+chunks.sort(key=lambda x: int(re.findall(r'\d+', x)[0]))
+
 # ----------------------------
-# Determine grid size automatically
+# Load chunk images and record sizes
 # ----------------------------
-num_chunks = len(chunks)
+chunk_images = []
+chunk_sizes = []
+for filename in chunks:
+    path = os.path.join(chunk_dir, filename)
+    img = Image.open(path)
+    chunk_images.append(img)
+    chunk_sizes.append(img.size)  # (width, height)
+
+# ----------------------------
+# Auto-detect grid layout
+# ----------------------------
+num_chunks = len(chunk_images)
+# Try to make grid as close to square as possible
 grid_cols = math.ceil(math.sqrt(num_chunks))
 grid_rows = math.ceil(num_chunks / grid_cols)
 
 # ----------------------------
-# Open first chunk to get size
+# Compute column widths and row heights
 # ----------------------------
-first = Image.open(os.path.join(chunk_dir, chunks[0]))
-cw, ch = first.size
+col_widths = []
+for c in range(grid_cols):
+    max_w = max(
+        chunk_sizes[r*grid_cols + c][0]
+        for r in range(grid_rows)
+        if r*grid_cols + c < num_chunks
+    )
+    col_widths.append(max_w)
 
-final = Image.new("RGBA", (grid_cols * cw, grid_rows * ch), (0, 0, 0, 0))
-
-# ----------------------------
-# Paste chunks into final image
-# ----------------------------
-idx = 0
+row_heights = []
 for r in range(grid_rows):
+    max_h = max(
+        chunk_sizes[r*grid_cols + c][1]
+        for c in range(grid_cols)
+        if r*grid_cols + c < num_chunks
+    )
+    row_heights.append(max_h)
+
+total_width = sum(col_widths)
+total_height = sum(row_heights)
+
+# ----------------------------
+# Create final canvas and paste chunks
+# ----------------------------
+final = Image.new("RGBA", (total_width, total_height), (0,0,0,0))
+
+y_offset = 0
+for r in range(grid_rows):
+    x_offset = 0
     for c in range(grid_cols):
+        idx = r * grid_cols + c
         if idx >= num_chunks:
-            break
-        img_path = os.path.join(chunk_dir, f"chunk_{idx}.png")
-        img = Image.open(img_path)
-        final.paste(img, (c * cw, r * ch))
-        idx += 1
+            continue  # skip missing chunks
+        img = chunk_images[idx]
+        final.paste(img, (x_offset, y_offset))
+        x_offset += col_widths[c]
+    y_offset += row_heights[r]
 
 # ----------------------------
 # Save stitched combo
@@ -69,5 +101,4 @@ for r in range(grid_rows):
 timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
 outfile = os.path.join(output_dir, f"combo-{next_prefix}_{timestamp}.png")
 final.save(outfile, "PNG")
-
 print(f"✅ Saved stitched combo as {outfile}")
