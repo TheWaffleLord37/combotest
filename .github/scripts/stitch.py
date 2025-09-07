@@ -94,7 +94,7 @@ for r in range(chunk_rows):
 # ----------------------------
 # Save stitched combo
 # ----------------------------
-timestamp = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
+timestamp = datetime.utcnow().strftime("%Y-%m-%d__%Hh%Mm%SsUTC")
 outfile = os.path.join(output_dir, f"combo-{next_prefix}_{timestamp}.png")
 final.save(outfile, "PNG")
 print(f"✅ Saved stitched combo as {outfile}")
