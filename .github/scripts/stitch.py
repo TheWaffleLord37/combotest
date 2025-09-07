@@ -29,7 +29,7 @@ next_prefix = next((p for p in prefixes if p not in used_prefixes), "zzzzz")
 # Configuration: explicit chunk layout
 # ----------------------------
 chunk_cols = 3  # number of chunk columns in original split
-chunk_rows = 2  # number of chunk rows in original split
+chunk_rows = 3  # number of chunk rows in original split
 
 # ----------------------------
 # Gather and sort chunks numerically
