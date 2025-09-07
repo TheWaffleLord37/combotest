@@ -3,8 +3,12 @@ import os
 from datetime import datetime
 import string
 import re
+import sys
 
-chunk_dir = "chunks"
+# ----------------------------
+# Use folder passed in from GitHub Action, or default
+# ----------------------------
+chunk_dir = sys.argv[1] if len(sys.argv) > 1 else "chunks"
 output_dir = "combo"
 os.makedirs(output_dir, exist_ok=True)
 
