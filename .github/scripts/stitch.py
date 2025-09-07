@@ -3,7 +3,6 @@ import os
 from datetime import datetime
 import string
 import re
-import math
 
 chunk_dir = "chunks"
 output_dir = "combo"
@@ -27,6 +26,12 @@ used_prefixes = [f.split("_")[0].replace("combo-", "") for f in existing_files]
 next_prefix = next((p for p in prefixes if p not in used_prefixes), "zzzzz")
 
 # ----------------------------
+# Configuration: explicit chunk layout
+# ----------------------------
+chunk_cols = 4  # number of chunk columns in original split
+chunk_rows = 2  # number of chunk rows in original split
+
+# ----------------------------
 # Gather and sort chunks numerically
 # ----------------------------
 chunks = [f for f in os.listdir(chunk_dir) if re.match(r"chunk_\d+\.png", f)]
@@ -34,6 +39,11 @@ if not chunks:
     raise SystemExit("❌ No chunks found")
 
 chunks.sort(key=lambda x: int(re.findall(r'\d+', x)[0]))
+
+# Validate total chunks
+num_chunks = len(chunks)
+if num_chunks != chunk_cols * chunk_rows:
+    raise ValueError(f"Expected {chunk_cols * chunk_rows} chunks, but found {num_chunks}")
 
 # ----------------------------
 # Load chunk images and record sizes
@@ -47,32 +57,16 @@ for filename in chunks:
     chunk_sizes.append(img.size)  # (width, height)
 
 # ----------------------------
-# Auto-detect grid layout
-# ----------------------------
-num_chunks = len(chunk_images)
-# Try to make grid as close to square as possible
-grid_cols = math.ceil(math.sqrt(num_chunks))
-grid_rows = math.ceil(num_chunks / grid_cols)
-
-# ----------------------------
 # Compute column widths and row heights
 # ----------------------------
 col_widths = []
-for c in range(grid_cols):
-    max_w = max(
-        chunk_sizes[r*grid_cols + c][0]
-        for r in range(grid_rows)
-        if r*grid_cols + c < num_chunks
-    )
+for c in range(chunk_cols):
+    max_w = max(chunk_sizes[r*chunk_cols + c][0] for r in range(chunk_rows))
     col_widths.append(max_w)
 
 row_heights = []
-for r in range(grid_rows):
-    max_h = max(
-        chunk_sizes[r*grid_cols + c][1]
-        for c in range(grid_cols)
-        if r*grid_cols + c < num_chunks
-    )
+for r in range(chunk_rows):
+    max_h = max(chunk_sizes[r*chunk_cols + c][1] for c in range(chunk_cols))
     row_heights.append(max_h)
 
 total_width = sum(col_widths)
@@ -84,12 +78,10 @@ total_height = sum(row_heights)
 final = Image.new("RGBA", (total_width, total_height), (0,0,0,0))
 
 y_offset = 0
-for r in range(grid_rows):
+for r in range(chunk_rows):
     x_offset = 0
-    for c in range(grid_cols):
-        idx = r * grid_cols + c
-        if idx >= num_chunks:
-            continue  # skip missing chunks
+    for c in range(chunk_cols):
+        idx = r * chunk_cols + c
         img = chunk_images[idx]
         final.paste(img, (x_offset, y_offset))
         x_offset += col_widths[c]
